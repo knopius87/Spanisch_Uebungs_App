@@ -2205,6 +2205,7 @@ function ins(c){
 }
 
 function checkAnswer(){
+  try{
   const ex=ses.exs[ses.idx];
   const fb=document.getElementById('fbp');let ok=false;
   if(ex.type==='mc'){
@@ -2235,10 +2236,16 @@ function checkAnswer(){
   const [mic,mtxt]=ok?pick(okMsgs):pick(badMsgs);
   const correctAns=ex.type==='fill'?(ex.a||ex.answer||''):ex.choices?.[ex.correct]||'';
   fb.innerHTML=ok
-    ?`<div class="mascot-row"><span class="mascot bounce">${mic}</span><div class="mascot-speech"><h4 style="color:#4ade80">${mtxt} +${xg} XP</h4><p>${ex.explain||''}</p></div></div>`
-    :`<div class="mascot-row"><span class="mascot">${mic}</span><div class="mascot-speech"><h4 style="color:#f87171">${mtxt}</h4><p><strong>Richtig:</strong> ${correctAns}</p>${ex.explain?`<p style="margin-top:.3rem;font-size:.82rem">${ex.explain}</p>`:''}</div></div>`;
+    ?`<div class="mascot-row"><span class="mascot bounce">${mic}</span><div class="mascot-speech"><h4 style="color:#4ade80">${mtxt} +${xg} XP</h4><p>${ex.explain||ex.ex||''}</p></div></div>`
+    :`<div class="mascot-row"><span class="mascot">${mic}</span><div class="mascot-speech"><h4 style="color:#f87171">${mtxt}</h4><p><strong>Richtig:</strong> ${correctAns}</p>${(ex.explain||ex.ex)?`<p style="margin-top:.3rem;font-size:.82rem">${ex.explain||ex.ex}</p>`:''}</div></div>`;
   document.getElementById('bchk').style.display='none';
   document.getElementById('bnxt').style.display='block';
+  }catch(err){
+    // Safety: always show Weiter even if feedback rendering fails
+    console.error('checkAnswer error:',err);
+    document.getElementById('bchk').style.display='none';
+    document.getElementById('bnxt').style.display='block';
+  }
 }
 function norm(s){return s.toLowerCase().trim().replace(/[¿¡]/g,'').replace(/\s+/g,' ').trim();}
 function nextEx(){
