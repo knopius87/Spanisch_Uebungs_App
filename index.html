@@ -2128,9 +2128,19 @@ function startReview(){
   ses={exs:pool.slice(0,9).map(v=>mkVocEx({...v,review:true})),idx:0,correct:0,xp:0,mode:'review',unitId:null,topicId:null,chalCode:null};launch();
 }
 function startQuick(){
-  let pool=[];UNITS.slice(0,5).forEach(u=>pool=pool.concat(u.vocab.map(v=>({...v,unit:u.id}))));
+  const pool=[];
+  // 4 Vokabel-Fragen aus den ersten 8 Unidades
+  let vpool=[];UNITS.slice(0,8).forEach(u=>vpool=vpool.concat(u.vocab.map(v=>({...v,unit:u.id}))));
+  shuffle(vpool);pool.push(...vpool.slice(0,4).map(v=>mkVocEx(v)));
+  // 2 Grammatik-Fragen (ser_estar + gustar)
+  const gkeys=shuffle(Object.keys(GRAMEX));
+  if(GRAMEX[gkeys[0]])pool.push(shuffle([...GRAMEX[gkeys[0]]])[0]);
+  if(GRAMEX[gkeys[1]])pool.push(shuffle([...GRAMEX[gkeys[1]]])[0]);
+  // 1 Konjugations-Frage (Presente)
+  const kex=buildKonjugEx('presente',1);
+  if(kex.length)pool.push(kex[0]);
   shuffle(pool);
-  ses={exs:pool.slice(0,3).map(v=>mkVocEx(v)),idx:0,correct:0,xp:0,mode:'quick',unitId:null,topicId:null,chalCode:null};launch();
+  ses={exs:pool.slice(0,7),idx:0,correct:0,xp:0,mode:'quick',unitId:null,topicId:null,chalCode:null};launch();
 }
 
 // ══════════════════════════════════════════════
