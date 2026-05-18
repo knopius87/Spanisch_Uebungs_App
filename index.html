@@ -2160,6 +2160,7 @@ function getDistractors(correct,n){
 // ══════════════════════════════════════════════
 function launch(){showScreen('exercise');renderEx();}
 function renderEx(){
+  if(!ses.exs||ses.idx>=ses.exs.length){finishSes();return;}
   const ex=ses.exs[ses.idx];const tot=ses.exs.length;
   document.getElementById('epf').style.width=(ses.idx/tot*100)+'%';
   document.getElementById('xpind').textContent=ses.xp+' XP';
@@ -2249,15 +2250,21 @@ function checkAnswer(){
 }
 function norm(s){return s.toLowerCase().trim().replace(/[¿¡]/g,'').replace(/\s+/g,' ').trim();}
 function nextEx(){
-  ses.idx++;
-  if(ses.idx>=ses.exs.length)finishSes();
-  else renderEx();
+  try{
+    ses.idx++;
+    if(ses.idx>=ses.exs.length)finishSes();
+    else renderEx();
+  }catch(err){
+    console.error('nextEx error:',err);
+    showScreen('home');
+  }
 }
 
 // ══════════════════════════════════════════════
 //  FINISH SESSION
 // ══════════════════════════════════════════════
 function finishSes(){
+  try{
   const tot=ses.exs.length,acc=Math.round(ses.correct/tot*100);
   const oldCity=getCityForXP(S.xp);
   S.xp+=ses.xp;S.exercises_done+=tot;
@@ -2301,6 +2308,10 @@ function finishSes(){
   if(_pendingLevelup){
     showLevelup(_pendingLevelup);
   } else {
+    showScreen('result');
+  }
+  }catch(err){
+    console.error('finishSes error:',err);
     showScreen('result');
   }
 }
