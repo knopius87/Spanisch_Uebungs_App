@@ -2215,6 +2215,42 @@ function ins(c){
   document.getElementById('bchk').disabled=false;
 }
 
+
+// ── Sound & Haptic Feedback ────────────────────────────────────────────
+let _audioCtx=null;
+function _getAudio(){
+  if(!_audioCtx){try{_audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+  return _audioCtx;
+}
+function playSound(ok){
+  // Vibration
+  if(navigator.vibrate){
+    navigator.vibrate(ok?[40]:[80,40,80]);
+  }
+  // Sound via Web Audio API
+  const ctx=_getAudio();
+  if(!ctx)return;
+  try{
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    if(ok){
+      // Correct: two ascending tones (major third)
+      osc.frequency.setValueAtTime(523,ctx.currentTime);       // C5
+      osc.frequency.setValueAtTime(659,ctx.currentTime+0.12);  // E5
+      gain.gain.setValueAtTime(0.18,ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.35);
+      osc.start(ctx.currentTime);osc.stop(ctx.currentTime+0.35);
+    } else {
+      // Wrong: descending tone
+      osc.frequency.setValueAtTime(330,ctx.currentTime);       // E4
+      osc.frequency.setValueAtTime(220,ctx.currentTime+0.15);  // A3
+      gain.gain.setValueAtTime(0.15,ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);
+      osc.start(ctx.currentTime);osc.stop(ctx.currentTime+0.4);
+    }
+  }catch(e){}
+}
 function checkAnswer(){
   try{
   const ex=ses.exs[ses.idx];
@@ -2239,7 +2275,7 @@ function checkAnswer(){
     const ww={...ex.vocab,unit:ses.unitId||0};
     if(!S.weak_words.find(w=>w.es===ww.es)){S.weak_words.unshift(ww);if(S.weak_words.length>30)S.weak_words.pop();}
   }
-  if(navigator.vibrate)navigator.vibrate(ok?[30]:[80,30,80]);
+  playSound(ok);
   fb.className='fbpanel '+(ok?'ok':'bad')+' show';
   const okMsgs=[['🦊','¡Perfecto!'],['🦉','¡Muy bien!'],['⭐','¡Correcto!'],['🎯','Treffer!']];
   const badMsgs=[['🤔','Nicht ganz!'],['🦊','¡Ánimo!'],['📚','Merken.'],['💪','¡Sigue!']];
@@ -2368,9 +2404,9 @@ function startBossById(bossId){
   renderBossIntro(boss);
 }
 function startBoss(){
-  _currentBossOverride=null;
-  showScreen('boss');
   const nextBoss=BOSSES.find(b=>!S.boss_beaten.includes(b.id))||BOSSES[BOSSES.length-1];
+  _currentBossOverride=nextBoss;
+  showScreen('boss');
   renderBossIntro(nextBoss);
 }
 function renderBossIntro(boss){
@@ -2499,6 +2535,7 @@ function checkBossAnswer(){
     if(inp){const ua=norm(inp.value),ca=norm(ex.a||'');ok=ua===ca||ca.split('/').some(p=>norm(p)===ua);inp.disabled=true;inp.classList.add(ok?'ok':'bad');}
   }
   if(ok)bossState.correct++;else bossState.lives--;
+  playSound(ok);
   const fb=document.getElementById('boss-fbp');
   if(fb){
     fb.className='fbpanel '+(ok?'ok':'bad')+' show';
