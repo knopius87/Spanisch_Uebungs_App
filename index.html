@@ -497,6 +497,7 @@ h1,h2,h3,.disp{font-family:'Playfair Display',serif}
     </div>
     <button class="btn-p" onclick="startApp()">¡Vamos! →</button><br>
     <button class="btn-ghost" onclick="startApp()">Ohne Namen weitermachen</button>
+    <button onclick="showLoadModal()" style="background:transparent;border:1px solid rgba(255,183,3,.3);color:rgba(255,183,3,.7);padding:.5rem 1rem;border-radius:20px;font-family:'Nunito',sans-serif;font-size:.78rem;cursor:pointer;margin-bottom:.5rem">📥 Bereits gespielt? Fortschritt laden</button>
     <p class="priv">🔒 Kein Konto · Keine E-Mail · Alles lokal auf diesem Gerät</p>
   </div>
 </div>
@@ -533,6 +534,7 @@ h1,h2,h3,.disp{font-family:'Playfair Display',serif}
   <div class="topbar">
     <span class="logo">a_tope</span>
     <div class="pills">
+      <button onclick="showHelpModal()" title="Anleitung" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:50%;width:28px;height:28px;color:rgba(255,255,255,.6);font-size:.85rem;font-weight:700;cursor:pointer;flex-shrink:0;font-family:Nunito,sans-serif">?</button>
       <div class="pill">🔥<span id="h-str">0</span></div>
       <div class="pill">⚡<span id="h-xp">0</span> XP</div>
       <div class="pill city-pill" id="h-city">🏛️ Madrid</div>
@@ -636,7 +638,7 @@ h1,h2,h3,.disp{font-family:'Playfair Display',serif}
   <h2 class="disp res-xp" id="rt"></h2>
   <p class="res-sub" id="rsub"></p>
   <div class="res-badges">
-    <div class="rbadge"><div class="ri">⚡</div><div class="rv" id="r-xp">+0</div><div class="rl">XP</div></div>
+    <div class="rbadge"><div class="ri">⚡</div><div class="rv" id="r-xp">+0</div><div class="rl">XP</div></div><div class="res-stat"><div id="r-total-xp" style="font-size:.8rem;color:var(--sol);font-weight:700;margin-top:.25rem"></div></div>
     <div class="rbadge"><div class="ri">✅</div><div class="rv" id="r-cor">0/0</div><div class="rl">Richtig</div></div>
     <div class="rbadge"><div class="ri">🎯</div><div class="rv" id="r-acc">0%</div><div class="rl">Genauigkeit</div></div>
   </div>
@@ -777,6 +779,13 @@ h1,h2,h3,.disp{font-family:'Playfair Display',serif}
   </div>
   <div id="weekly-report-placeholder"></div>
   <div class="badgsec">
+    <div class="sec-title">💾 Gerätewechsel &amp; Backup</div>
+    <div style="display:flex;gap:.65rem;margin-bottom:.65rem">
+      <button onclick="showSaveModal()" style="flex:1;padding:.75rem .4rem;background:var(--cbg3);border:1.5px solid rgba(255,183,3,.4);border-radius:12px;color:var(--sol);font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;line-height:1.3">💾 Fortschritt<br>sichern</button>
+      <button onclick="showLoadModal()" style="flex:1;padding:.75rem .4rem;background:var(--cbg3);border:1.5px solid rgba(74,222,128,.3);border-radius:12px;color:#4ade80;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;line-height:1.3">📥 Fortschritt<br>laden</button>
+      <button onclick="showHelpModal()" style="flex:1;padding:.75rem .4rem;background:var(--cbg3);border:1.5px solid rgba(100,150,255,.3);border-radius:12px;color:#60a5fa;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;line-height:1.3">📖 Anleitung</button>
+    </div>
+    <p style="font-size:.73rem;color:rgba(255,255,255,.3);margin-bottom:.75rem;line-height:1.4">QR-Code fotografieren oder Link per WhatsApp senden → auf jedem Gerät wieder laden.</p>
     <div class="sec-title">Abzeichen</div>
     <div class="bgrid" id="bgrid"></div>
   </div>
@@ -811,12 +820,6 @@ h1,h2,h3,.disp{font-family:'Playfair Display',serif}
 <div id="badge-toast">
   <span class="bt-icon" id="bt-icon">🏆</span>
   <div><div class="bt-title">Abzeichen freigeschaltet!</div><div id="bt-name">—</div></div>
-</div>
-<canvas id="confetti-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:998;display:none"></canvas>
-
-<!-- LERNMODUS -->
-<div id="screen-learn" class="screen" style="background:var(--cbg1)">
-  <div id="learn-content" style="flex:1;display:flex;flex-direction:column"></div>
 </div>
 
 <script>
@@ -1720,6 +1723,7 @@ function getWotd(){
     if(ni)ni.focus();
   }
   _renderCityJourney();
+  setTimeout(_checkUrlImport,50);
 })();
 
 let obIdx=0;
@@ -2251,6 +2255,197 @@ function playSound(ok){
     }
   }catch(e){}
 }
+
+
+// ── Fortschritt sichern & laden ────────────────────────────────────────
+
+function _encodeState(){
+  try{
+    const d={n:S.nickname,x:S.xp,s:S.streak,lp:S.lastPlayed,
+      ed:S.exercises_done,up:S.unit_progress,bb:S.boss_beaten,
+      b:S.badges,daily:S.daily,pr:S.perfect_rounds,ob:S.onboarded,
+      mc:S.mode_counts,v:7};
+    return btoa(unescape(encodeURIComponent(JSON.stringify(d))));
+  }catch(e){return null;}
+}
+
+function _decodeState(b64){
+  try{
+    const d=JSON.parse(decodeURIComponent(escape(atob(b64))));
+    if(d.v!==7)return false;
+    S.nickname=d.n||S.nickname; S.xp=d.x||0; S.streak=d.s||0;
+    S.lastPlayed=d.lp||null; S.exercises_done=d.ed||0;
+    S.unit_progress=d.up||{}; S.boss_beaten=d.bb||[];
+    S.badges=d.b||[]; S.daily=d.daily||{date:'',done:0,goal:5};
+    S.perfect_rounds=d.pr||0; S.onboarded=d.ob||false;
+    S.mode_counts=d.mc||{}; save(); return true;
+  }catch(e){return false;}
+}
+
+// Lädt Fortschritt aus URL-Parameter beim Start
+function _checkUrlImport(){
+  try{
+    const p=new URLSearchParams(window.location.search);
+    const raw=p.get('d')||p.get('data');
+    if(!raw)return;
+    if(_decodeState(raw)){
+      // URL bereinigen ohne Reload
+      const clean=window.location.pathname+window.location.hash;
+      window.history.replaceState({},'',clean);
+      applyBodyCity(S.xp);
+      showToastMsg('✅ Fortschritt geladen! Willkommen zurück, '+S.nickname+'!');
+      renderHome(); showScreen('home');
+    }
+  }catch(e){}
+}
+
+function _makeQR(text, size){
+  // QR-Code per Google Charts API (online) oder qrcode.js (offline fallback)
+  // Wir nutzen eine inline-SVG-basierte Näherung über einen canvas-Trick
+  // Einfachste zuverlässige Methode: img mit Google Charts
+  const url='https://api.qrserver.com/v1/create-qr-code/?size='+size+'x'+size+'&data='+encodeURIComponent(text);
+  return '<img src="'+url+'" width="'+size+'" height="'+size+'" style="border-radius:8px;background:#fff;padding:6px" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'block\'">'
+       + '<div style="display:none;font-size:.72rem;color:var(--gris);padding:.5rem;text-align:center">QR-Code benötigt Internet.<br>Nutze stattdessen den Link.</div>';
+}
+
+function showSaveModal(){
+  const b64=_encodeState();
+  if(!b64){alert('Fehler beim Erstellen.');return;}
+  const base=window.location.href.split('?')[0].split('#')[0];
+  const link=base+'?d='+b64;
+  const qr='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(link);
+
+  const modal=document.createElement('div');
+  modal.id='save-modal';
+  modal.dataset.link=link;
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9500;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto';
+  modal.onclick=function(e){if(e.target===modal)modal.remove();};
+
+  const inner=document.createElement('div');
+  inner.style.cssText='background:var(--cbg2);border:1px solid var(--borde);border-radius:18px;padding:1.5rem;max-width:340px;width:100%;text-align:center';
+  inner.innerHTML=
+    '<div style="font-size:1.3rem;font-weight:800;color:var(--sol);margin-bottom:.3rem">💾 Fortschritt sichern</div>'+
+    '<p style="font-size:.8rem;color:rgba(255,255,255,.55);margin-bottom:1rem;line-height:1.5">QR-Code fotografieren <strong>oder</strong> Link per WhatsApp senden — auf jedem Gerät wieder öffnen.</p>'+
+    '<div style="background:#fff;border-radius:12px;padding:8px;display:inline-block;margin-bottom:.85rem">'+
+    '<img src="'+qr+'" width="200" height="200" style="border-radius:6px;display:block" onerror="this.parentNode.innerHTML=\'<div style=padding:1rem;font-size:.75rem;color:#666>QR benötigt Internet</div>\'">'+
+    '</div><br>';
+
+  const btnCopy=document.createElement('button');
+  btnCopy.textContent='🔗 Link kopieren';
+  btnCopy.style.cssText='width:100%;padding:.8rem;background:var(--sol);color:var(--noche);border:none;border-radius:12px;font-family:Nunito,sans-serif;font-size:.9rem;font-weight:800;cursor:pointer;margin-bottom:.5rem';
+  btnCopy.onclick=function(){
+    const lnk=document.getElementById('save-modal').dataset.link;
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(lnk).then(function(){
+        btnCopy.textContent='✅ Kopiert!';
+        setTimeout(function(){btnCopy.textContent='🔗 Link kopieren';},2500);
+      });
+    } else {prompt('Link:',lnk);}
+  };
+
+  const btnWa=document.createElement('button');
+  btnWa.textContent='📱 Per WhatsApp senden';
+  btnWa.style.cssText='width:100%;padding:.75rem;background:#25D366;color:#fff;border:none;border-radius:12px;font-family:Nunito,sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;margin-bottom:.5rem';
+  btnWa.onclick=function(){
+    const lnk=document.getElementById('save-modal').dataset.link;
+    window.open('https://wa.me/?text='+encodeURIComponent('Mein a_tope Fortschritt: '+lnk),'_blank');
+  };
+
+  const btnClose=document.createElement('button');
+  btnClose.textContent='Schließen';
+  btnClose.style.cssText='width:100%;padding:.65rem;background:transparent;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.15);border-radius:12px;font-family:Nunito,sans-serif;font-size:.85rem;cursor:pointer';
+  btnClose.onclick=function(){modal.remove();};
+
+  inner.appendChild(btnCopy);
+  inner.appendChild(btnWa);
+  inner.appendChild(btnClose);
+  modal.appendChild(inner);
+  document.body.appendChild(modal);
+}
+
+function showLoadModal(){
+  const modal=document.createElement('div');
+  modal.id='load-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9500;display:flex;align-items:center;justify-content:center;padding:1rem';
+  modal.onclick=function(e){if(e.target===modal)modal.remove();};
+  modal.innerHTML=`
+    <div style="background:var(--cbg2);border:1px solid var(--borde);border-radius:18px;padding:1.5rem;max-width:340px;width:100%;text-align:center">
+      <div style="font-size:1.3rem;font-weight:800;color:#4ade80;margin-bottom:.3rem">📥 Fortschritt laden</div>
+      <p style="font-size:.8rem;color:rgba(255,255,255,.55);margin-bottom:.85rem;line-height:1.5">
+        Öffne deinen gespeicherten Link — dein Fortschritt wird automatisch geladen.<br><br>
+        <span style="opacity:.6">Oder füge den Link hier ein:</span>
+      </p>
+      <textarea id="load-link-inp" placeholder="https://...?d=..." style="width:100%;box-sizing:border-box;padding:.75rem;background:var(--cbg3);border:1.5px solid var(--borde);border-radius:10px;color:var(--blanco);font-family:'Courier New',monospace;font-size:.72rem;resize:none;height:70px;outline:none;margin-bottom:.75rem"></textarea>
+      <button onclick="
+        const raw=document.getElementById('load-link-inp').value.trim();
+        let b64=raw;
+        try{const u=new URL(raw);b64=u.searchParams.get('d')||u.searchParams.get('data')||raw;}catch(e){}
+        if(_decodeState(b64)){
+          document.getElementById('load-modal').remove();
+          applyBodyCity(S.xp);renderHome();showScreen('home');
+          showToastMsg('✅ Willkommen zurück, '+S.nickname+'!');
+        }else{alert('Ungültiger Link. Bitte prüfe die Eingabe.');}
+      " style="width:100%;padding:.8rem;background:#4ade80;color:#052e16;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:800;cursor:pointer;margin-bottom:.5rem">Laden ✅</button>
+      <button onclick="document.getElementById('load-modal').remove()" style="width:100%;padding:.65rem;background:transparent;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.15);border-radius:12px;font-family:'Nunito',sans-serif;font-size:.85rem;cursor:pointer">Abbrechen</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function showHelpModal(){
+  const modal=document.createElement('div');
+  modal.id='help-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9500;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto';
+  modal.onclick=function(e){if(e.target===modal)modal.remove();};
+  modal.innerHTML=`
+    <div style="background:var(--cbg2);border:1px solid var(--borde);border-radius:18px;padding:1.5rem;max-width:340px;width:100%;max-height:90vh;overflow-y:auto">
+      <div style="font-size:1.4rem;font-weight:800;color:var(--sol);text-align:center;margin-bottom:1rem">📖 Anleitung</div>
+
+      <div style="background:var(--cbg3);border-radius:12px;padding:1rem;margin-bottom:.75rem">
+        <div style="font-weight:700;font-size:.9rem;color:var(--sol);margin-bottom:.5rem">🎮 So funktioniert a_tope</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.7);line-height:1.6">
+          Übe täglich Spanisch mit <strong>Vokabeln, Grammatik und Konjugation</strong>. Sammle XP, bereise 11 Städte und besiege 15 Bosse um deinen Titel zu steigern.
+        </div>
+      </div>
+
+      <div style="background:var(--cbg3);border-radius:12px;padding:1rem;margin-bottom:.75rem">
+        <div style="font-weight:700;font-size:.9rem;color:#4ade80;margin-bottom:.5rem">💾 Fortschritt sichern</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.7);line-height:1.7">
+          <div style="margin-bottom:.4rem">1️⃣ <strong>Profil</strong> → <strong>Fortschritt sichern</strong> tippen</div>
+          <div style="margin-bottom:.4rem">2️⃣ QR-Code <strong>fotografieren</strong> <em>oder</em> Link per <strong>WhatsApp an dich selbst</strong> schicken</div>
+          <div>3️⃣ Auf neuem Gerät: Link öffnen → alles da ✅</div>
+        </div>
+      </div>
+
+      <div style="background:var(--cbg3);border-radius:12px;padding:1rem;margin-bottom:.75rem">
+        <div style="font-weight:700;font-size:.9rem;color:#60a5fa;margin-bottom:.5rem">⚔️ Bosse & Titel</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.7);line-height:1.6">
+          Jeder besiegte Boss bringt +50 XP und zählt zum Titelaufstieg:<br>
+          🐣 Novato → 📖 Estudiante → 🗺️ Aventurero → 🧭 Conocedor → ⭐ Experto → 🎓 Maestro → 👑 Profesor/a
+        </div>
+      </div>
+
+      <div style="background:var(--cbg3);border-radius:12px;padding:1rem;margin-bottom:.75rem">
+        <div style="font-weight:700;font-size:.9rem;color:#c084fc;margin-bottom:.5rem">⚡ Quick-Tipps</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.7);line-height:1.7">
+          <div>🔥 <strong>Streak:</strong> Täglich üben → Bonus-XP</div>
+          <div>📖 <strong>Lernmodus:</strong> Erst anschauen, dann einüben</div>
+          <div>🔀 <strong>Konjugation:</strong> Alle 6 Zeiten immer frei</div>
+          <div>⚔️ <strong>Challenge:</strong> Selber Code → alle gleiche Runde</div>
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('help-modal').remove()" style="width:100%;padding:.8rem;background:var(--sol);color:var(--noche);border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:800;cursor:pointer;margin-top:.25rem">Verstanden! 👊</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+// Alte Funktionen als Aliase für Rückwärtskompatibilität
+function showSaveCodeModal(){showSaveModal();}
+function showImportCodeModal(){showLoadModal();}
+function generateSaveCode(){return _encodeState();}
+function loadSaveCode(code){return _decodeState(code);}
+
+
 function checkAnswer(){
   try{
   const ex=ses.exs[ses.idx];
@@ -2268,7 +2463,7 @@ function checkAnswer(){
     ok=ua===ca||ca.split('/').some(p=>norm(p)===ua);
     inp.disabled=true;inp.classList.add(ok?'ok':'bad');
   }
-  const xg=ok?10:2;ses.xp+=xg;if(ok)ses.correct++;
+  const xg=ok?10:0;ses.xp+=xg;if(ok)ses.correct++;
   animXP(document.getElementById('xpind'),ses.xp-xg,ses.xp);
   trackAnswer(ex,ok);
   if(!ok&&ex.vocab){
@@ -2335,12 +2530,23 @@ function finishSes(){
     _pendingLevelup=newCity;
   }
   save();
+  // Topbar & City-Banner sofort aktualisieren
+  const _updCity=getCityForXP(S.xp);
+  const _hcity=document.getElementById('h-city');
+  if(_hcity)_hcity.textContent=_updCity.icon+' '+_updCity.name;
+  const _htitle=document.getElementById('h-title');
+  if(_htitle){const _t=getCurrentTitle(S);_htitle.textContent=_t.ic+' '+_t.es;}
+  const _xpTxt=document.getElementById('cb-xp-text');
+  if(_xpTxt)_xpTxt.textContent=S.xp.toLocaleString('de');
 
   if(acc===100||S.daily.done>=S.daily.goal)setTimeout(launchConfetti,400);
 
-  document.getElementById('r-xp').textContent='+'+ses.xp;
+  document.getElementById('r-xp').textContent='+'+ses.xp+' XP';
   document.getElementById('r-cor').textContent=ses.correct+'/'+tot;
   document.getElementById('r-acc').textContent=acc+'%';
+  // Zeige auch Total-XP
+  const _rxpTotal=document.getElementById('r-total-xp');
+  if(_rxpTotal)_rxpTotal.textContent='Gesamt: '+S.xp.toLocaleString('de')+' XP';
   let ic='⭐',rt='¡Bien hecho!',rs='Weiter so!';
   if(acc>=90){ic='🏆';rt='¡Perfecto!';rs='Beeindruckend!';}
   else if(acc>=70){ic='🌟';rt='¡Muy bien!';rs='Gute Leistung!';}
@@ -3124,9 +3330,6 @@ function finishLearnMode(){
       </div>
     </div>`;
 }
-
-  
-
 </script>
 
 </body>
